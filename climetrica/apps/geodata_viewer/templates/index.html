@@ -1,0 +1,48 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Visualizador de Capas</title>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+</head>
+<body>
+    <h1>Visualizador de Datos Geoespaciales</h1>
+
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <label>Sube uno o más archivos (.csv o .geojson):</label><br>
+        <input type="file" id="layer_files" name="layer_files" multiple><br><br>
+
+        <div id="color-selectors"></div>
+
+        <label>O selecciona una variable de la base de datos:</label><br>
+        <select name="db_variable">
+            <option value="">-- Seleccionar variable --</option>
+            <option value="velocidad del viento">Velocidad del viento</option>
+            <option value="direccion del viento">Dirección del viento</option>
+            <option value="nivel del mar">Nivel del mar</option>
+            <option value="precipitacion acumulada">Precipitación acumulada</option>
+            <option value="temperatura del mar">Temperatura del mar</option>
+        </select><br><br>
+
+        <label for="render_type">Tipo de visualización:</label>
+        <select name="render_type" id="render_type">
+            <option value="heatmap">Mapa de calor</option>
+            <option value="points">Puntos individuales</option>
+        </select><br><br>
+
+        <button type="submit">Visualizar</button>
+    </form>
+
+    <hr>
+
+    {% if plot_div %}
+        <div id="layer-controls"></div>
+        {{ plot_div|safe }}
+    {% endif %}
+
+    
+</body>
+</html>
