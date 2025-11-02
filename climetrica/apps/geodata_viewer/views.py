@@ -13,4 +13,4 @@ def map_view(request):
     return render(request, 'templates/map.html', context={'plot_div': plot_div})
 
 
-# Create your views here.
+

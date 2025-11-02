@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'geodata_viewer',
+    'apps.geodata_viewer',
 ]
 
 MIDDLEWARE = [
