@@ -7,6 +7,12 @@ import sys
 def main():
     """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'climetrica.settings')
+    
+
+    # ✅ Agrega el backend al PYTHONPATH absoluto
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    BACKEND_PATH = os.path.join(BASE_DIR, 'backend')
+
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

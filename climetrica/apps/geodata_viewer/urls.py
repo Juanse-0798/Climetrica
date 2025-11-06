@@ -1,6 +1,6 @@
 from django.urls import path
-from . import views
+from .views import plot_map_view
 
 urlpatterns = [
-    path('map/', views.map_view, name='map'),
+    path('map/', plot_map_view, name='map'),
 ]

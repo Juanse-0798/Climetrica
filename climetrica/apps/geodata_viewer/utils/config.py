@@ -2,7 +2,7 @@ DB_CREDENTIALS = {
     'database': 'postgres',
     'user': 'postgres',
     'password': 'admin',
-    'host': '172.29.64.1',
+    'host': 'localhost',
     'port': '5432'
 }
 

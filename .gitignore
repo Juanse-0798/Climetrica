@@ -3,3 +3,4 @@
 .vscode/
 *-dev/
 climetrica/env/
+**/env/

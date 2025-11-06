@@ -1,8 +1,7 @@
 # data_utils.py
 
-import sys
-sys.path.append('/home/juanse/Climetrica/backend/data_wharehouse')
-from db_utils import check_database_connection, consult_data_by_fields
+
+from apps.data_conditioning.db_utils import check_database_connection, consult_data_by_fields
 import geopandas as gpd
 from shapely import wkt
 
