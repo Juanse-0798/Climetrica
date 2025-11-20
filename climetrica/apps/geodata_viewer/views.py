@@ -77,48 +77,96 @@ def plot_map_view(request):
                 if not req:
                     print(f"⚠️ {db_variable} no encontrada en DB_REQUESTS.")
                 else:
-                    # Crear request compatible con extract_data_from_data_warehouse
+                    # Asegurar que 'variable' en el request sea siempre una lista
+                    raw_var = req.get('variable', db_variable)
+                    if isinstance(raw_var, str):
+                        variables = [raw_var]
+                    elif isinstance(raw_var, (list, tuple)):
+                        variables = list(raw_var)
+                    else:
+                        variables = [db_variable]
+
                     request_dic = {
                         'data_type': 'geodata',
-                        'variable': [req['variable']],
-                        'source': req['source'],
-                        'start_date': req['start_date'],
-                        'end_date': req['end_date'],
+                        'variable': variables,
+                        'source': req.get('source'),
+                        'start_date': req.get('start_date'),
+                        'end_date': req.get('end_date'),
                         'longitude': None,
                         'latitude': None
                     }
 
                     dic_out = extract_data_from_data_warehouse(DB_CREDENTIALS, request_dic)
-                    data = dic_out.get(req['variable'])
+
+                    # Determinar la clave correcta en la respuesta
+                    data_key = variables[0]
+                    data = None
+                    if isinstance(dic_out, dict):
+                        if data_key in dic_out:
+                            data = dic_out[data_key]
+                        elif len(dic_out) == 1:
+                            # tomar la única entrada si la clave no coincide exactamente
+                            data_key, data = next(iter(dic_out.items()))
+                        else:
+                            # intentar buscar clave que contenga la palabra (por si vienen nombres distintos)
+                            for k in dic_out.keys():
+                                if db_variable in k or variables[0] in k:
+                                    data = dic_out[k]
+                                    data_key = k
+                                    break
 
                     if not data:
                         print(f"⚠️ No se recibieron datos válidos para {db_variable}")
                     else:
-                        # 🔹 Combinar todas las fechas en un solo DataFrame
-                        combined_df = pd.concat(
-                            [pd.DataFrame(content) for content in data.values()],
-                            ignore_index=True
-                        )
-
-                        combined_df = combined_df.dropna(subset=['longitude', 'latitude'])
-                        var_name = req['variable']
-
-                        if var_name in combined_df.columns:
-                            combined_df = combined_df[combined_df[var_name] != 0]
-                            z_values = combined_df[var_name].values
+                        # Combinar todas las fechas/entradas en un solo DataFrame
+                        frames = []
+                        if isinstance(data, dict):
+                            for content in data.values():
+                                frames.append(pd.DataFrame(content))
                         else:
-                            z_values = np.ones(len(combined_df))
+                            frames.append(pd.DataFrame(data))
 
-                        if combined_df.empty:
-                            print(f"⚠️ Sin valores válidos para {db_variable}")
+                        if not frames:
+                            print(f"⚠️ No hay frames para {db_variable}")
                         else:
-                            gdf = gpd.GeoDataFrame(
-                                combined_df,
-                                geometry=gpd.points_from_xy(combined_df['longitude'], combined_df['latitude']),
-                                crs="EPSG:4326"
-                            )
-                            colorscale = request.POST.get('colorscale', 'Turbo')
-                            layers.append((db_variable, gdf, z_values, colorscale))
+                            combined_df = pd.concat(frames, ignore_index=True)
+
+                            # eliminar registros sin coordenadas
+                            combined_df = combined_df.dropna(subset=['longitude', 'latitude'], how='any')
+                            if combined_df.empty:
+                                print(f"⚠️ Sin coordenadas válidas para {db_variable}")
+                            else:
+                                # seleccionar columna de valores: preferir la columna que coincida con data_key,
+                                # si no existe, elegir la primera columna numérica distinta de lon/lat
+                                value_col = None
+                                if data_key in combined_df.columns:
+                                    value_col = data_key
+                                else:
+                                    numeric_cols = combined_df.select_dtypes(include=['number']).columns.tolist()
+                                    numeric_cols = [c for c in numeric_cols if c not in ('longitude', 'latitude')]
+                                    if numeric_cols:
+                                        value_col = numeric_cols[0]
+
+                                if value_col:
+                                    combined_df[value_col] = pd.to_numeric(combined_df[value_col], errors='coerce')
+                                    # quitar NaN y ceros
+                                    combined_df = combined_df.dropna(subset=[value_col])
+                                    combined_df = combined_df[combined_df[value_col] != 0]
+                                    z_values = combined_df[value_col].values
+                                else:
+                                    # no hay columna de valor numérica: usar 1s (pero también filtrar vacíos)
+                                    z_values = np.ones(len(combined_df)) if not combined_df.empty else np.array([])
+
+                                if combined_df.empty:
+                                    print(f"⚠️ Sin valores válidos para {db_variable} después de filtrar 0/NaN")
+                                else:
+                                    gdf = gpd.GeoDataFrame(
+                                        combined_df,
+                                        geometry=gpd.points_from_xy(combined_df['longitude'], combined_df['latitude']),
+                                        crs="EPSG:4326"
+                                    )
+                                    colorscale = request.POST.get('db_color', 'Turbo')
+                                    layers.append((db_variable, gdf, z_values, colorscale))
 
             except Exception as e:
                 print(f"❌ Error cargando '{db_variable}' desde la bodega: {e}")
