@@ -18,6 +18,9 @@ def plot_map_view(request):
         render_type = request.POST.get('render_type', 'heatmap')
         print(f"📥 Tipo de render: {render_type}")
 
+        # recoger lista de colores seleccionados (uno por archivo subido, en el mismo orden)
+        colors_list = request.POST.getlist('colors')  # <-- nuevo
+
         # --- 1️⃣ Carga desde archivos CSV o GeoJSON ---
         uploaded_files = request.FILES.getlist('layer_files')
         if uploaded_files:
@@ -25,7 +28,7 @@ def plot_map_view(request):
             tmp_dir = os.path.join(os.getcwd(), "tmp")
             os.makedirs(tmp_dir, exist_ok=True)
 
-            for uploaded_file in uploaded_files:
+            for idx, uploaded_file in enumerate(uploaded_files):
                 temp_path = os.path.join(tmp_dir, uploaded_file.name)
                 print(f"📂 Procesando archivo: {uploaded_file.name}")
 
@@ -34,6 +37,9 @@ def plot_map_view(request):
                         dest.write(chunk)
 
                 try:
+                    # seleccionar colorscale específico para este archivo (si fue enviado)
+                    colorscale = colors_list[idx] if idx < len(colors_list) and colors_list[idx] else request.POST.get('colorscale', 'Turbo')
+
                     if uploaded_file.name.endswith('.csv'):
                         df = pd.read_csv(temp_path)
                         if df.shape[1] < 3:
@@ -50,7 +56,6 @@ def plot_map_view(request):
                             crs="EPSG:4326"
                         )
                         z_values = df[value_col].values
-                        colorscale = request.POST.get('colorscale', 'Turbo')
                         layers.append((uploaded_file.name, gdf, z_values, colorscale))
 
                     elif uploaded_file.name.endswith('.geojson'):
@@ -62,7 +67,6 @@ def plot_map_view(request):
                         else:
                             z_values = np.ones(len(gdf))
 
-                        colorscale = request.POST.get('colorscale', 'Turbo')
                         layers.append((uploaded_file.name, gdf, z_values, colorscale))
 
                 except Exception as e:

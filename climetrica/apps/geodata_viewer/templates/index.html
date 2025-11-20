@@ -12,8 +12,8 @@
     <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
 
-        <label>Sube uno o más archivos (.csv o .geojson):</label><br>
-        <input type="file" id="layer_files" name="layer_files" multiple><br><br>
+        <label>Sube uno o más archivos (.shp, .csv o .geojson):</label><br>
+        <input type="file" id="layer_files" name="layer_files" multiple accept=".shp,.csv,.geojson"><br><br>
 
         <div id="color-selectors"></div>
 
@@ -25,6 +25,18 @@
             <option value="nivel del mar">Nivel del mar</option>
             <option value="precipitacion acumulada">Precipitación acumulada</option>
             <option value="temperatura del mar">Temperatura del mar</option>
+        </select><br><br>
+
+        <label for="db_color">Color para variable BD (opcional):</label>
+        <select name="db_color" id="db_color">
+            <option value="Turbo">Turbo</option>
+            <option value="Viridis">Viridis</option>
+            <option value="Cividis">Cividis</option>
+            <option value="Plasma">Plasma</option>
+            <option value="Magma">Magma</option>
+            <option value="Hot">Hot</option>
+            <option value="Jet">Jet</option>
+            <option value="YlOrRd">YlOrRd</option>
         </select><br><br>
 
         <label for="render_type">Tipo de visualización:</label>
@@ -43,6 +55,46 @@
         {{ plot_div|safe }}
     {% endif %}
 
-    
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const COLORSCALES = ['Turbo','Viridis','Cividis','Plasma','Magma','Hot','Jet','YlOrRd'];
+
+    const layerFilesEl = document.getElementById('layer_files');
+    if (!layerFilesEl) return;
+
+    layerFilesEl.addEventListener('change', updateColorSelectors);
+
+    function updateColorSelectors() {
+        const files = layerFilesEl.files;
+        const container = document.getElementById('color-selectors');
+        container.innerHTML = '';
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+
+            const wrapper = document.createElement('div');
+            wrapper.style.marginBottom = '8px';
+
+            const label = document.createElement('label');
+            label.textContent = `Color para "${file.name}": `;
+            label.htmlFor = `color_select_${i}`;
+
+            const select = document.createElement('select');
+            select.name = 'colors';  // backend leerá request.POST.getlist('colors')
+            select.id = `color_select_${i}`;
+
+            for (const c of COLORSCALES) {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                select.appendChild(opt);
+            }
+
+            wrapper.appendChild(label);
+            wrapper.appendChild(select);
+            container.appendChild(wrapper);
+        }
+    }
+});
+</script>
 </body>
 </html>
